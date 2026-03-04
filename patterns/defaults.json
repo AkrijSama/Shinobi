@@ -1,0 +1,61 @@
+{
+  "patterns": [
+    {
+      "name": "Debug Mode Enabled",
+      "type": "debug_mode",
+      "regex": "(?i)DEBUG\\s*[=:]\\s*(?:True|1|\"true\"|'true')",
+      "file_patterns": ["*.py", "*.env", "*.yml", "*.yaml", "*.toml", "*.cfg", "*.ini", "*.conf"],
+      "severity": "high",
+      "description": "Debug mode is enabled — exposes stack traces, internal paths, and sensitive data to attackers"
+    },
+    {
+      "name": "CORS Wildcard",
+      "type": "cors_wildcard",
+      "regex": "(?i)(?:CORS|cors|Access-Control-Allow-Origin|allow_origins?)\\s*[=:]\\s*[\"']?\\*[\"']?",
+      "severity": "high",
+      "description": "CORS allows all origins (*) — any website can make authenticated requests to your API"
+    },
+    {
+      "name": "Bind All Interfaces",
+      "type": "bind_all",
+      "regex": "(?:0\\.0\\.0\\.0|host\\s*[=:]\\s*[\"']0\\.0\\.0\\.0[\"'])",
+      "severity": "medium",
+      "description": "Binding to 0.0.0.0 — service is accessible from any network interface"
+    },
+    {
+      "name": "Default Database Password",
+      "type": "default_db_password",
+      "regex": "(?i)(?:DB_PASSWORD|DATABASE_PASSWORD|db_pass|POSTGRES_PASSWORD|MYSQL_PASSWORD|MYSQL_ROOT_PASSWORD)\\s*[=:]\\s*[\"']?(?:postgres|root|password|admin|123456|test|default)[\"']?\\s*$",
+      "severity": "critical",
+      "description": "Default database password detected — databases with weak passwords are easily compromised"
+    },
+    {
+      "name": "Weak SECRET_KEY",
+      "type": "weak_secret_key",
+      "regex": "(?i)SECRET_KEY\\s*[=:]\\s*[\"']([^\"']{1,19})[\"']",
+      "severity": "high",
+      "description": "SECRET_KEY is too short (under 20 chars) — weak keys can be brute-forced"
+    },
+    {
+      "name": "Common Default SECRET_KEY",
+      "type": "default_secret_key",
+      "regex": "(?i)SECRET_KEY\\s*[=:]\\s*[\"'](?:change-me|secret|django-insecure-|please-change|default|your-secret-key|mysecretkey|changethis)[^\"']*[\"']",
+      "severity": "critical",
+      "description": "SECRET_KEY is set to a known default — attackers can forge sessions and tokens"
+    },
+    {
+      "name": "SSL Verification Disabled",
+      "type": "ssl_disabled",
+      "regex": "(?i)(?:verify\\s*[=:]\\s*False|SSL_VERIFY\\s*[=:]\\s*(?:false|0|False)|NODE_TLS_REJECT_UNAUTHORIZED\\s*[=:]\\s*[\"']?0)",
+      "severity": "high",
+      "description": "SSL verification disabled — connections are vulnerable to man-in-the-middle attacks"
+    },
+    {
+      "name": "Insecure Cookie Settings",
+      "type": "insecure_cookies",
+      "regex": "(?i)(?:secure\\s*[=:]\\s*False|httponly\\s*[=:]\\s*False|SESSION_COOKIE_SECURE\\s*[=:]\\s*False)",
+      "severity": "medium",
+      "description": "Insecure cookie settings — cookies may be intercepted or accessed via JavaScript"
+    }
+  ]
+}

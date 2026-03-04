@@ -1,0 +1,41 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.backends._legacy:_Backend"
+
+[project]
+name = "shinobi-scan"
+version = "1.0.0"
+description = "10-second security scan for developers who ship fast"
+readme = "README.md"
+license = {text = "MIT"}
+requires-python = ">=3.10"
+authors = [
+    {name = "SolidDark", email = "hello@soliddark.net"},
+]
+keywords = ["security", "scanner", "cli", "devtools", "secrets", "vulnerability"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Topic :: Security",
+    "Topic :: Software Development :: Quality Assurance",
+]
+dependencies = [
+    "Pillow>=9.0",
+    "gitpython>=3.1",
+    "requests>=2.28",
+]
+
+[project.scripts]
+shinobi = "shinobi.cli:main"
+
+[project.urls]
+Homepage = "https://soliddark.net/shinobi"
+Repository = "https://github.com/soliddark/shinobi"
+
+[tool.setuptools.packages.find]
+include = ["shinobi*"]
+
+[tool.setuptools.package-data]
+shinobi = ["assets/*.png"]

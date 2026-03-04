@@ -1,0 +1,50 @@
+{
+  "client_side_extensions": [".js", ".ts", ".jsx", ".tsx", ".vue", ".svelte"],
+  "model_file_extensions": [".bin", ".onnx", ".pt", ".safetensors", ".h5", ".pkl", ".pth"],
+  "ai_route_patterns": ["chat", "ai", "llm", "generate", "complete", "completions", "predict", "inference"],
+  "patterns": [
+    {
+      "name": "LLM Key in Client Code",
+      "type": "client_llm_key",
+      "regex": "(?:sk-[A-Za-z0-9_-]{20,}|sk-ant-[A-Za-z0-9_-]{20,}|AIza[0-9A-Za-z_-]{35})",
+      "check_client_side_only": true,
+      "severity": "critical",
+      "description": "LLM API key found in client-side code — anyone can extract it from the browser"
+    },
+    {
+      "name": "Unsanitized User Input to LLM",
+      "type": "prompt_injection_risk",
+      "regex": "(?:req(?:uest)?\\.body|req\\.query|req\\.params|request\\.(?:data|json|form|args))\\s*(?:\\[|\\.).*(?:openai|anthropic|completion|chat|generate|llm|prompt)",
+      "severity": "high",
+      "description": "User input passed directly to LLM call without sanitization — vulnerable to prompt injection"
+    },
+    {
+      "name": "Unsanitized LLM Call Pattern",
+      "type": "prompt_injection_risk_alt",
+      "regex": "(?:openai|anthropic|completion|chat\\.create|generate).*(?:req(?:uest)?\\.body|req\\.query|req\\.params|request\\.(?:data|json|form|args))",
+      "severity": "high",
+      "description": "User input flows into LLM API call — vulnerable to prompt injection attacks"
+    },
+    {
+      "name": "System Prompt in Code",
+      "type": "prompt_leak_risk",
+      "regex": "(?i)(?:system_prompt|system_message|SYSTEM_PROMPT)\\s*[=:]\\s*[\"'`]",
+      "severity": "medium",
+      "description": "System prompt hardcoded in source — could be leaked via prompt injection or repo exposure"
+    },
+    {
+      "name": "Prompt Template File",
+      "type": "prompt_template_file",
+      "file_patterns": ["*prompt*", "*system*message*", "*template*prompt*"],
+      "severity": "medium",
+      "description": "Prompt template file found in repo — system prompts can be extracted if repo is public"
+    },
+    {
+      "name": "AI Route Without Validation",
+      "type": "unvalidated_ai_route",
+      "regex": "(?:app\\.|router\\.)(?:post|get|put|patch)\\s*\\(\\s*[\"'/].*(?:chat|ai|llm|generate|complete)",
+      "severity": "medium",
+      "description": "AI endpoint detected — verify input validation is applied to prevent abuse"
+    }
+  ]
+}
