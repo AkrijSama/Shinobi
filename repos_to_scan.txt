@@ -1,0 +1,28 @@
+# Shinobi Batch Scan — GitHub repos to scan
+# Add one URL per line. Lines starting with # are ignored.
+
+https://github.com/elder-plinius/OBLITERATUS
+https://github.com/Avaiga/demo-chatbot
+https://github.com/openclaw/openclaw
+# AI / LLM starters
+https://github.com/mckaywrigley/chatbot-ui
+https://github.com/Yidadaa/ChatGPT-Next-Web
+https://github.com/lobehub/lobe-chat
+https://github.com/vercel/ai-chatbot
+https://github.com/langgenius/dify
+https://github.com/FlowiseAI/Flowise
+https://github.com/BerriAI/litellm
+https://github.com/chatchat-space/Langchain-Chatchat
+
+# Web app boilerplates
+https://github.com/tiangolo/full-stack-fastapi-template
+https://github.com/Blazity/next-enterprise
+https://github.com/ixartz/Next-js-Boilerplate
+https://github.com/saadpasta/developerFolio
+https://github.com/cruip/open-react-template
+
+# Fast-shipped / vibe-coded
+https://github.com/all-in-aigc/sorafm
+https://github.com/6677-ai/tap4-ai-webui
+https://github.com/miurla/morphic
+https://github.com/developersdigest/llm-answer-engine

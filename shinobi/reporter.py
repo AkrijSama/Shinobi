@@ -165,7 +165,8 @@ def print_report(results: dict, use_color: bool = True):
 
         print(f"  \U0001f4dc {_c('GIT HISTORY', 'bold', use_color)}              ", end='')
         if skipped:
-            print(f"{_c(f'skipped — {git_data.get(\"skip_reason\", \"unknown\")}'  , 'gray', use_color)}")
+            skip_reason = git_data.get('skip_reason', 'unknown')
+            print(f"{_c(f'skipped — {skip_reason}', 'gray', use_color)}")
         else:
             print(f"{_c(f'{git_count} found', _severity_color('critical') if git_count else 'green', use_color)}")
             for f in git_findings:
@@ -177,7 +178,9 @@ def print_report(results: dict, use_color: bool = True):
 
     # Errors
     for err in results.get('errors', []):
-        print(f"  {_c(f'[{err[\"scanner\"]}] skipped — {err[\"error\"]}', 'gray', use_color)}")
+        scanner_name = err['scanner']
+        error_msg = err['error']
+        print(f"  {_c(f'[{scanner_name}] skipped — {error_msg}', 'gray', use_color)}")
     if results.get('errors'):
         print()
 
