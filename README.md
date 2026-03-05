@@ -1,4 +1,4 @@
-# ![Shinobi](shinobi/assets/logo.png)
+![Shinobi](shinobi/assets/banner.png)
 
 # Shinobi
 
