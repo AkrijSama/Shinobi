@@ -1,12 +1,23 @@
 ![Shinobi](https://raw.githubusercontent.com/AkrijSama/shinobi/main/shinobi/assets/banner.png)
 
-# Shinobi
+# Shinobi Scan — AI Vibe Coding Security Scanner
 
-**10-second security scan for developers who ship fast**
+Shinobi Scan is a free open-source CLI security scanner for AI-generated codebases.
+It is built for vibe coders who ship fast and need a safety net before code reaches production.
 
-Shinobi is a local-first security scanner that checks your codebase for exposed secrets, dangerous defaults, vulnerable dependencies, missing security basics, and AI-specific risks — all in seconds, right from the terminal.
+> 100% local. Zero source code leaves your machine.
 
-> **100% local. Zero data ever leaves your machine.**
+## What It Does
+
+- Scans repos for hardcoded secrets, API keys, and tokens
+- Detects `eval` and `exec` patterns tied to user input
+- Flags missing authentication, CSRF protection, and rate limiting
+- Checks for insecure `http://` URLs and `console.log` in production code
+- Scores every finding with severity: `CRITICAL / HIGH / MEDIUM / LOW / INFO`
+- Adds confidence scoring per finding: `HIGH / MEDIUM / LOW`
+- Outputs machine-readable JSON with `--json`
+- Writes Gate-compatible results with `--gate`
+- Supports deeper git-history scanning with `--deep`
 
 ## Install
 
@@ -14,90 +25,93 @@ Shinobi is a local-first security scanner that checks your codebase for exposed 
 pip install shinobi-scan
 ```
 
-Or install from source:
-
-```bash
-git clone https://github.com/AkrijSama/shinobi.git
-cd shinobi
-python generate_logo.py
-pip install .
-```
-
 ## Usage
 
 ```bash
-# Scan current directory (fast mode)
-shinobi
-
-# Scan a specific directory
-shinobi /path/to/project
-
-# Clone and scan a remote public repo
-shinobi --repo https://github.com/user/project
-
-# Deep scan — includes git history for previously committed secrets
-shinobi --deep
-
-# Save JSON report to a specific file
-shinobi --output report.json
-
-# Plain text output (no ANSI colors)
-shinobi --no-color
+shinobi-scan /path/to/repo
+shinobi-scan /path/to/repo --json
+shinobi-scan /path/to/repo --gate
+shinobi-scan /path/to/repo --deep
 ```
 
-## What It Scans
+Shinobi also installs the shorter `shinobi` command as an alias for the same CLI.
 
-| Scanner | What It Checks |
-|---------|---------------|
-| **Secrets** | API keys (OpenAI, Stripe, AWS, GitHub, etc), passwords, tokens, private keys, .env files not in .gitignore |
-| **Defaults** | DEBUG=True, CORS wildcards, 0.0.0.0 bindings, default database passwords, weak SECRET_KEYs |
-| **Dependencies** | Known CVEs via pip-audit/npm-audit, unpinned versions |
-| **Armor** | Missing rate limiting, CSRF protection, security headers, input sanitization, authentication |
-| **AI Risks** | LLM keys in client code, prompt injection patterns, model files in repo, exposed system prompts |
-| **Git History** | Previously committed secrets across last 500 commits (with `--deep`) |
+## Output Format
 
-## Sample Output
+Terminal findings are rendered as `[SEVERITY/CONFIDENCE]`:
 
+```text
+[CRITICAL/HIGH]  Hardcoded Anthropic API key — config.js:12
+[HIGH/MEDIUM]    Eval on user input — server.js:47
+[MEDIUM/LOW]     No authentication middleware detected
 ```
-   __ _     _             _     _
-  / _\ |__ (_)_ __   ___ | |__ (_)
-  \ \| '_ \| | '_ \ / _ \| '_ \| |
-  _\ \ | | | | | | | (_) | |_) | |
-  \__/_| |_|_|_| |_|\___/|_.__/|_|
 
-  v1.0 — shadow guard for your code
+## JSON Output
 
-  🔍 shinobi v1.0 — security scan complete
+Use `--json` to emit only valid JSON:
 
-  Project: my-app
-  Scanned: 342 files in 2.1s
-
-  ╔══════════════════════════════════════════════╗
-  ║  THREAT LEVEL: CRITICAL 🔴                    ║
-  ╚══════════════════════════════════════════════╝
-
-  🔑 SECRETS EXPOSED          3 found
-     → src/config.py:12 — OpenAI API Key: sk-a****...x9f2
-     → .env:5 — AWS Access Key: AKIA****...XMPL
-
-  ⚠️  DANGEROUS DEFAULTS       1 found
-     → settings.py:8 — Debug mode is enabled
-
-  🛡️  MISSING ARMOR            2 gaps
-     → No rate limiting detected
-     → No CSRF protection detected
-
-  Total issues: 6  |  Critical: 3  |  High: 1  |  Medium: 2
+```json
+{
+  "scan_target": "/path/to/repo",
+  "timestamp": "2026-03-09T03:28:11.335618Z",
+  "total_findings": 3,
+  "critical": 0,
+  "high": 1,
+  "medium": 0,
+  "low": 0,
+  "confidence_breakdown": {
+    "high": 2,
+    "medium": 0,
+    "low": 1
+  },
+  "findings": [
+    {
+      "severity": "HIGH",
+      "confidence": "HIGH",
+      "confidence_note": "file exists and is not covered by .gitignore",
+      "rule": "Untracked Env File",
+      "file": ".env",
+      "line": 0,
+      "description": ".env exists but is NOT in .gitignore — secrets may be committed",
+      "context": null,
+      "context_note": null
+    }
+  ]
+}
 ```
+
+## Gate Integration
+
+```bash
+shinobi-scan /path/to/repo --gate
+```
+
+This writes the last machine-readable scan to:
+
+```text
+~/.gate/shinobi/last-scan.json
+```
+
+Gate can read that file and surface Shinobi findings in the Auditor desk monitor.
+
+## What Shinobi Scans
+
+| Scanner | Coverage |
+|---------|----------|
+| Secrets | Hardcoded API keys, tokens, passwords, private keys, untracked `.env` files |
+| Defaults | Debug mode, permissive CORS, weak bindings, insecure config defaults |
+| Dependencies | Known CVEs from dependency audit tools and risky version states |
+| Armor | Missing auth, CSRF protection, rate limiting, security headers, sanitization gaps |
+| Code Risks | `eval`/`exec`, production `console.log`, insecure external `http://` URLs |
+| AI Risks | Prompt-injection patterns, exposed LLM assets, client-side key exposure |
+| Git History | Previously committed secrets when `--deep` is enabled |
 
 ## Privacy
 
-Shinobi runs **entirely on your machine**. It does not make network requests, phone home, or transmit any data. The only external calls are to `pip audit` and `npm audit` (which are your own local tools calling their own registries).
+Shinobi runs entirely on your machine. It does not upload your repository contents. Dependency auditing may call ecosystem tooling such as `pip-audit` or `npm audit`, but Shinobi itself does not phone home.
 
-## License
+## SolidDark
 
-MIT
-
----
-
-Built by **SolidDark** — [https://soliddark.net](https://soliddark.net)
+Built by Akrij — Digital Architect  
+https://soliddark.net  
+Free forever. Part of the SolidDark security toolkit.

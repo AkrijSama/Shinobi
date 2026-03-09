@@ -1,9 +1,14 @@
 """Setup script for Shinobi."""
 from setuptools import setup, find_packages
 
+with open("README_V1.md", "r", encoding="utf-8") as f:
+    long_description = f.read()
+
 setup(
     name='shinobi-scan',
     version='1.1.0',
+    long_description=long_description,
+    long_description_content_type="text/markdown",
     packages=find_packages(),
     include_package_data=True,
     package_data={

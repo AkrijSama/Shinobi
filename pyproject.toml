@@ -6,7 +6,7 @@ build-backend = "setuptools.build_meta"
 name = "shinobi-scan"
 version = "1.1.0"
 description = "10-second security scan for developers who ship fast"
-readme = "README.md"
+readme = "README_V1.md"
 license = {text = "MIT"}
 requires-python = ">=3.10"
 authors = [
@@ -34,6 +34,9 @@ shinobi-scan = "shinobi.cli:main"
 [project.urls]
 Homepage = "https://soliddark.net/shinobi"
 Repository = "https://github.com/AkrijSama/shinobi"
+
+[tool.setuptools]
+include-package-data = true
 
 [tool.setuptools.packages.find]
 include = ["shinobi*"]
