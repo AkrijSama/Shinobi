@@ -76,6 +76,8 @@ def walk_all_files(target_dir: str) -> Generator[Path, None, None]:
 def read_file_safe(filepath: Path) -> str | None:
     """Read a file safely, returning None if it can't be read."""
     try:
+        if is_probably_binary(filepath):
+            return None
         with open(filepath, 'r', encoding='utf-8', errors='ignore') as f:
             return f.read()
     except (OSError, PermissionError):
@@ -85,10 +87,24 @@ def read_file_safe(filepath: Path) -> str | None:
 def read_lines_safe(filepath: Path) -> list[str] | None:
     """Read file lines safely, returning None if it can't be read."""
     try:
+        if is_probably_binary(filepath):
+            return None
         with open(filepath, 'r', encoding='utf-8', errors='ignore') as f:
             return f.readlines()
     except (OSError, PermissionError):
         return None
+
+
+def is_probably_binary(filepath: Path) -> bool:
+    """Quick binary-file heuristic for files with misleading extensions."""
+    try:
+        with open(filepath, 'rb') as f:
+            chunk = f.read(2048)
+    except (OSError, PermissionError):
+        return True
+    if not chunk:
+        return False
+    return b'\x00' in chunk
 
 
 def mask_secret(value: str) -> str:

@@ -1,4 +1,4 @@
-![Shinobi](shinobi/assets/banner.png)
+![Shinobi](https://raw.githubusercontent.com/AkrijSama/shinobi/main/shinobi/assets/banner.png)
 
 # Shinobi
 
@@ -17,7 +17,7 @@ pip install shinobi-scan
 Or install from source:
 
 ```bash
-git clone https://github.com/soliddark/shinobi.git
+git clone https://github.com/AkrijSama/shinobi.git
 cd shinobi
 python generate_logo.py
 pip install .

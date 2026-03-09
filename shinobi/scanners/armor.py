@@ -1,6 +1,8 @@
 """Scanner for missing security basics."""
 
 import re
+from pathlib import Path
+
 from shinobi.utils import walk_files, read_file_safe, format_relative_path
 
 
@@ -44,7 +46,7 @@ SECURITY_PATTERNS = {
             r'escape_html', r'html\.escape', r'xss', r'purify',
             r'sanitizer', r'clean_html', r'strip_tags',
         ],
-        'severity': 'medium',
+        'severity': 'high',
         'gap_message': 'No input sanitization library detected — user input may contain malicious HTML or scripts',
     },
     'authentication': {
@@ -69,6 +71,17 @@ def scan(target_dir: str) -> dict:
         "findings": [],
         "detected": [],
     }
+    target_path = Path(target_dir)
+
+    if not (target_path / '.env.example').exists():
+        results['findings'].append({
+            'type': 'missing_env_example',
+            'name': 'Missing .env.example',
+            'file': '.env.example',
+            'line': 0,
+            'severity': 'info',
+            'description': 'Missing .env.example — document required environment variables for safer setup',
+        })
 
     # Collect all source content for pattern matching
     all_content = []
@@ -87,6 +100,8 @@ def scan(target_dir: str) -> dict:
     if file_count == 0:
         results['findings'].append({
             'type': 'no_source',
+            'file': '.',
+            'line': 0,
             'name': 'No Source Files',
             'severity': 'info',
             'description': 'No source code files found to analyze',
@@ -107,6 +122,8 @@ def scan(target_dir: str) -> dict:
         if not found:
             results['findings'].append({
                 'type': key,
+                'file': '.',
+                'line': 0,
                 'name': check['name'],
                 'severity': check['severity'],
                 'description': check['gap_message'],

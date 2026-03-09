@@ -3,7 +3,7 @@ from setuptools import setup, find_packages
 
 setup(
     name='shinobi-scan',
-    version='1.0.0',
+    version='1.0.1',
     packages=find_packages(),
     include_package_data=True,
     package_data={
@@ -19,6 +19,7 @@ setup(
     entry_points={
         'console_scripts': [
             'shinobi=shinobi.cli:main',
+            'shinobi-scan=shinobi.cli:main',
         ],
     },
     install_requires=[

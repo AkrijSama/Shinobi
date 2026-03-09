@@ -1,14 +1,14 @@
 """Terminal output formatter and JSON report generator."""
 
 import json
-import os
 from pathlib import Path
 
 from shinobi.logo import print_logo
 
 
-# ANSI color codes
 class Colors:
+    """ANSI color codes."""
+
     RED = '\033[91m'
     ORANGE = '\033[38;5;208m'
     YELLOW = '\033[93m'
@@ -44,7 +44,74 @@ def _severity_color(severity: str) -> str:
         'medium': 'yellow',
         'low': 'blue',
         'info': 'gray',
-    }.get(severity, 'gray')
+    }.get(str(severity).lower(), 'gray')
+
+
+def _severity_rank(severity: str) -> int:
+    """Rank severities from most to least severe."""
+    return {
+        'critical': 0,
+        'high': 1,
+        'medium': 2,
+        'low': 3,
+        'info': 4,
+    }.get(str(severity).lower(), 99)
+
+
+def _severity_tag(severity: str, confidence: str, use_color: bool) -> str:
+    """Render a severity/confidence badge."""
+    severity_label = str(severity).upper()
+    confidence_label = str(confidence).upper()
+    return _c(f'[{severity_label}/{confidence_label}]', _severity_color(severity), use_color)
+
+
+def _finding_location(finding: dict) -> str | None:
+    """Format finding location for display."""
+    file_path = finding.get('file')
+    line = int(finding.get('line') or 0)
+    if not file_path or file_path == '.':
+        return None
+    if line > 0:
+        return f'{file_path}:{line}'
+    return str(file_path)
+
+
+def _finding_text(finding: dict) -> str:
+    """Build a concise finding message for terminal output."""
+    location = _finding_location(finding)
+    if finding.get('package'):
+        package = finding['package']
+        if location:
+            return f'{package} ({location}) — {finding["description"]}'
+        return f'{package} — {finding["description"]}'
+    if finding.get('scanner') == 'git_history' and finding.get('commit'):
+        commit = finding.get('commit', 'unknown')
+        date = str(finding.get('date', 'unknown'))[:10]
+        masked = finding.get('masked_value')
+        suffix = f' ({masked})' if masked else ''
+        return f'[{commit}] {finding["file"]} {date} — {finding["name"]}{suffix}'
+    if location:
+        return f'{location} — {finding["description"]}'
+    return finding['description']
+
+
+def _section_color(findings: list[dict]) -> str:
+    """Pick the highest-severity color for a section."""
+    if not findings:
+        return 'green'
+    highest = min(findings, key=lambda item: _severity_rank(item.get('severity', 'info')))
+    return _severity_color(highest.get('severity', 'info'))
+
+
+def _print_findings(findings: list[dict], use_color: bool):
+    """Print normalized finding lines."""
+    for finding in findings:
+        color = _severity_color(finding.get('severity', 'info'))
+        print(
+            f"     {_c('→', color, use_color)} "
+            f"{_severity_tag(finding.get('severity', 'info'), finding.get('confidence', 'low'), use_color)} "
+            f"{_finding_text(finding)}"
+        )
 
 
 def print_report(results: dict, use_color: bool = True):
@@ -57,7 +124,6 @@ def print_report(results: dict, use_color: bool = True):
     file_count = results['file_count']
     scan_time = results['scan_time']
 
-    # Header
     print(f"  \U0001f50d {_c('shinobi v1.0', 'bold', use_color)} — security scan complete\n")
     print(f"  Project: {project}")
     print(f"  Scanned: {file_count} files in {scan_time}s")
@@ -69,7 +135,6 @@ def print_report(results: dict, use_color: bool = True):
 
     print()
 
-    # Threat level box
     level_color = threat['color']
     level_text = f"  THREAT LEVEL: {threat['level']} {threat['emoji']}"
     box_width = 44
@@ -78,89 +143,60 @@ def print_report(results: dict, use_color: bool = True):
     print(f"  {_c('╚' + '═' * box_width + '╝', level_color, use_color)}")
     print()
 
-    # Secrets
     secrets_data = results['scanners'].get('secrets', {})
     secrets_findings = secrets_data.get('findings', [])
     env_warnings = secrets_data.get('env_warnings', [])
-    secrets_total = len(secrets_findings) + len(env_warnings)
-
-    print(f"  \U0001f511 {_c('SECRETS EXPOSED', 'bold', use_color)}          {_c(f'{secrets_total} found', _severity_color('critical') if secrets_total else 'green', use_color)}")
-    for f in secrets_findings:
-        color = _severity_color(f['severity'])
-        print(f"     {_c('→', color, use_color)} {f['file']}:{f['line']} — {f['name']}: {f['masked_value']}")
-    for w in env_warnings:
-        print(f"     {_c('→', 'yellow', use_color)} {w['description']}")
-    if not secrets_total:
+    secrets_all = secrets_findings + env_warnings
+    print(f"  \U0001f511 {_c('SECRETS EXPOSED', 'bold', use_color)}          {_c(f'{len(secrets_all)} found', _section_color(secrets_all), use_color)}")
+    if secrets_all:
+        _print_findings(secrets_all, use_color)
+    else:
         print(f"     {_c('✓ No secrets detected', 'green', use_color)}")
     print()
 
-    # Defaults
-    defaults_data = results['scanners'].get('defaults', {})
-    defaults_findings = defaults_data.get('findings', [])
-    defaults_count = len(defaults_findings)
-
-    print(f"  \u26a0\ufe0f  {_c('DANGEROUS DEFAULTS', 'bold', use_color)}       {_c(f'{defaults_count} found', _severity_color('high') if defaults_count else 'green', use_color)}")
-    for f in defaults_findings:
-        color = _severity_color(f['severity'])
-        print(f"     {_c('→', color, use_color)} {f['file']}:{f['line']} — {f['description']}")
-    if not defaults_count:
+    defaults_findings = results['scanners'].get('defaults', {}).get('findings', [])
+    print(f"  \u26a0\ufe0f  {_c('DANGEROUS DEFAULTS', 'bold', use_color)}       {_c(f'{len(defaults_findings)} found', _section_color(defaults_findings), use_color)}")
+    if defaults_findings:
+        _print_findings(defaults_findings, use_color)
+    else:
         print(f"     {_c('✓ No dangerous defaults found', 'green', use_color)}")
     print()
 
-    # Dependencies
-    deps_data = results['scanners'].get('deps', {})
-    deps_findings = deps_data.get('findings', [])
-    deps_count = len([f for f in deps_findings if f.get('source') != 'skip'])
-    critical_cves = sum(1 for f in deps_findings if f.get('severity') == 'critical')
-    moderate = sum(1 for f in deps_findings if f.get('severity') in ('medium', 'moderate'))
-
-    print(f"  \U0001f4e6 {_c('DEPENDENCY RISKS', 'bold', use_color)}          {_c(f'{deps_count} found', _severity_color('critical') if critical_cves else ('yellow' if deps_count else 'green'), use_color)}")
-    if critical_cves:
-        print(f"     {_c('→', 'red', use_color)} {critical_cves} critical CVEs")
-    if moderate:
-        print(f"     {_c('→', 'yellow', use_color)} {moderate} moderate vulnerabilities")
-    for f in deps_findings:
-        if f.get('source') == 'skip':
-            print(f"     {_c('→', 'gray', use_color)} {f['description']}")
-        elif f.get('severity') not in ('critical', 'medium', 'moderate'):
-            color = _severity_color(f.get('severity', 'medium'))
-            print(f"     {_c('→', color, use_color)} {f['package']}: {f['description']}")
-    if not deps_count:
+    deps_findings = results['scanners'].get('deps', {}).get('findings', [])
+    print(f"  \U0001f4e6 {_c('DEPENDENCY RISKS', 'bold', use_color)}          {_c(f'{len(deps_findings)} found', _section_color(deps_findings), use_color)}")
+    if deps_findings:
+        _print_findings(deps_findings, use_color)
+    else:
         print(f"     {_c('✓ No dependency vulnerabilities found', 'green', use_color)}")
     print()
 
-    # Armor
-    armor_data = results['scanners'].get('armor', {})
-    armor_findings = armor_data.get('findings', [])
-    armor_count = len(armor_findings)
-
-    print(f"  \U0001f6e1\ufe0f  {_c('MISSING ARMOR', 'bold', use_color)}            {_c(f'{armor_count} gaps', _severity_color('medium') if armor_count else 'green', use_color)}")
-    for f in armor_findings:
-        color = _severity_color(f['severity'])
-        print(f"     {_c('→', color, use_color)} {f['description']}")
-    if not armor_count:
+    armor_findings = results['scanners'].get('armor', {}).get('findings', [])
+    print(f"  \U0001f6e1\ufe0f  {_c('MISSING ARMOR', 'bold', use_color)}            {_c(f'{len(armor_findings)} gaps', _section_color(armor_findings), use_color)}")
+    if armor_findings:
+        _print_findings(armor_findings, use_color)
+    else:
         print(f"     {_c('✓ Security fundamentals in place', 'green', use_color)}")
     print()
 
-    # AI Risks
-    ai_data = results['scanners'].get('ai_risks', {})
-    ai_findings = ai_data.get('findings', [])
-    ai_count = len(ai_findings)
+    code_risk_findings = results['scanners'].get('code_risks', {}).get('findings', [])
+    print(f"  \U0001f9e0 {_c('CODE RISKS', 'bold', use_color)}               {_c(f'{len(code_risk_findings)} found', _section_color(code_risk_findings), use_color)}")
+    if code_risk_findings:
+        _print_findings(code_risk_findings, use_color)
+    else:
+        print(f"     {_c('✓ No risky code patterns detected', 'green', use_color)}")
+    print()
 
-    print(f"  \U0001f916 {_c('AI-SPECIFIC RISKS', 'bold', use_color)}         {_c(f'{ai_count} found', _severity_color('high') if ai_count else 'green', use_color)}")
-    for f in ai_findings:
-        color = _severity_color(f['severity'])
-        loc = f"{f['file']}:{f['line']}" if f.get('line') else f['file']
-        print(f"     {_c('→', color, use_color)} {loc} — {f['description']}")
-    if not ai_count:
+    ai_findings = results['scanners'].get('ai_risks', {}).get('findings', [])
+    print(f"  \U0001f916 {_c('AI-SPECIFIC RISKS', 'bold', use_color)}         {_c(f'{len(ai_findings)} found', _section_color(ai_findings), use_color)}")
+    if ai_findings:
+        _print_findings(ai_findings, use_color)
+    else:
         print(f"     {_c('✓ No AI-specific risks detected', 'green', use_color)}")
     print()
 
-    # Git history (deep scan only)
     if results.get('deep_scan'):
         git_data = results['scanners'].get('git_history', {})
         git_findings = git_data.get('findings', [])
-        git_count = len(git_findings)
         skipped = git_data.get('skipped', False)
 
         print(f"  \U0001f4dc {_c('GIT HISTORY', 'bold', use_color)}              ", end='')
@@ -168,40 +204,36 @@ def print_report(results: dict, use_color: bool = True):
             skip_reason = git_data.get('skip_reason', 'unknown')
             print(f"{_c(f'skipped — {skip_reason}', 'gray', use_color)}")
         else:
-            print(f"{_c(f'{git_count} found', _severity_color('critical') if git_count else 'green', use_color)}")
-            for f in git_findings:
-                color = _severity_color(f['severity'])
-                print(f"     {_c('→', color, use_color)} [{f['commit']}] {f['name']} in {f['file']} ({f['date'][:10]})")
-            if not git_count:
+            print(f"{_c(f'{len(git_findings)} found', _section_color(git_findings), use_color)}")
+            if git_findings:
+                _print_findings(git_findings, use_color)
+            else:
                 print(f"     {_c('✓ No secrets found in git history', 'green', use_color)}")
         print()
 
-    # Errors
     for err in results.get('errors', []):
-        scanner_name = err['scanner']
-        error_msg = err['error']
+        scanner_name = err.get('scanner', 'scanner')
+        error_msg = err.get('error', 'unknown error')
         print(f"  {_c(f'[{scanner_name}] skipped — {error_msg}', 'gray', use_color)}")
     if results.get('errors'):
         print()
 
-    # Divider and summary
     print(f"  {'─' * 42}")
-    t = threat
     parts = [
-        f"Total issues: {t['total']}",
-        f"Critical: {_c(str(t['critical']), 'red', use_color)}",
-        f"High: {_c(str(t['high']), 'red', use_color)}",
-        f"Medium: {_c(str(t['medium']), 'yellow', use_color)}",
+        f"Total issues: {threat['total']}",
+        f"Critical: {_c(str(threat['critical']), 'red', use_color)}",
+        f"High: {_c(str(threat['high']), 'red', use_color)}",
+        f"Medium: {_c(str(threat['medium']), 'yellow', use_color)}",
+        f"Low: {_c(str(threat['low']), 'blue', use_color)}",
+        f"Info: {_c(str(threat.get('info', 0)), 'gray', use_color)}",
     ]
     print(f"  {'  |  '.join(parts)}")
     print()
 
-    # Report path
     output_path = results.get('output_path', './shinobi-report.json')
     print(f"  \U0001f4c4 Full report: {output_path}")
     print()
 
-    # Rashomon plug
     print(f"  {'─' * 42}")
     print(f"  Want continuous monitoring? {_c('Rashomon', 'bold', use_color)} catches")
     print(f"  these in real-time before they hit production.")
@@ -209,39 +241,48 @@ def print_report(results: dict, use_color: bool = True):
     print()
 
 
-def save_json_report(results: dict, output_path: str):
-    """Save the full scan results as a JSON report."""
-    # Clean up internal fields
-    report = {
-        'shinobi_version': '1.0.0',
-        'project': results['project'],
-        'file_count': results['file_count'],
-        'scan_time': results['scan_time'],
-        'deep_scan': results.get('deep_scan', False),
-        'threat_level': results['threat_level']['level'],
-        'summary': {
-            'total': results['threat_level']['total'],
-            'critical': results['threat_level']['critical'],
-            'high': results['threat_level']['high'],
-            'medium': results['threat_level']['medium'],
-            'low': results['threat_level']['low'],
-        },
-        'scanners': {},
+def build_machine_report(results: dict) -> dict:
+    """Build the compact machine-readable JSON report."""
+    findings = []
+    confidence_breakdown = {
+        'high': 0,
+        'medium': 0,
+        'low': 0,
+    }
+    for finding in results.get('findings', []):
+        confidence = str(finding.get('confidence', 'low')).upper()
+        confidence_key = confidence.lower()
+        if confidence_key in confidence_breakdown:
+            confidence_breakdown[confidence_key] += 1
+        findings.append({
+            'severity': str(finding.get('severity', 'info')).upper(),
+            'confidence': confidence,
+            'confidence_note': finding.get('confidence_note', ''),
+            'rule': finding.get('name', 'Unknown Rule'),
+            'file': finding.get('file', '.'),
+            'line': int(finding.get('line') or 0),
+            'description': finding.get('description', ''),
+            'context': finding.get('context'),
+            'context_note': finding.get('context_note'),
+        })
+
+    return {
+        'scan_target': results['target_dir'],
+        'timestamp': results['timestamp'],
+        'total_findings': len(findings),
+        'critical': results['threat_level']['critical'],
+        'high': results['threat_level']['high'],
+        'medium': results['threat_level']['medium'],
+        'low': results['threat_level']['low'],
+        'confidence_breakdown': confidence_breakdown,
+        'findings': findings,
     }
 
-    for name, data in results['scanners'].items():
-        report['scanners'][name] = {
-            'findings': data.get('findings', []),
-            'skipped': data.get('skipped', False),
-            'skip_reason': data.get('skip_reason', ''),
-        }
-        if name == 'secrets':
-            report['scanners'][name]['env_warnings'] = data.get('env_warnings', [])
-        if name == 'git_history':
-            report['scanners'][name]['commits_scanned'] = data.get('commits_scanned', 0)
 
-    if results.get('errors'):
-        report['errors'] = results['errors']
-
-    with open(output_path, 'w') as f:
-        json.dump(report, f, indent=2, default=str)
+def save_json_report(results: dict, output_path: str):
+    """Save the machine-readable JSON report."""
+    report = build_machine_report(results)
+    output_file = Path(output_path)
+    output_file.parent.mkdir(parents=True, exist_ok=True)
+    with output_file.open('w', encoding='utf-8') as handle:
+        json.dump(report, handle, indent=2)

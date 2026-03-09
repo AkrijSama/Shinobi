@@ -28,6 +28,8 @@ def _scan_pip(target_dir: str) -> list[dict]:
                 for vuln in audit_data.get('vulnerabilities', []):
                     severity = _map_pip_severity(vuln.get('fix_versions', []))
                     findings.append({
+                        'file': 'requirements.txt',
+                        'line': 0,
                         'package': vuln.get('name', 'unknown'),
                         'installed_version': vuln.get('version', 'unknown'),
                         'vulnerability_id': vuln.get('id', 'unknown'),
@@ -54,6 +56,8 @@ def _scan_pip(target_dir: str) -> list[dict]:
                     pkg_name = re.split(r'[<>=!~]', line)[0].strip()
                     if pkg_name:
                         findings.append({
+                            'file': 'requirements.txt',
+                            'line': 0,
                             'package': pkg_name,
                             'installed_version': 'unpinned',
                             'vulnerability_id': 'UNPINNED',
@@ -88,6 +92,8 @@ def _scan_npm(target_dir: str) -> list[dict]:
             vulnerabilities = audit_data.get('vulnerabilities', {})
             for pkg_name, vuln_info in vulnerabilities.items():
                 findings.append({
+                    'file': 'package.json',
+                    'line': 0,
                     'package': pkg_name,
                     'installed_version': vuln_info.get('range', 'unknown'),
                     'vulnerability_id': vuln_info.get('via', [{}])[0].get('url', 'N/A') if isinstance(vuln_info.get('via', [{}])[0], dict) else 'N/A',
@@ -100,6 +106,8 @@ def _scan_npm(target_dir: str) -> list[dict]:
             pass
     except (FileNotFoundError, subprocess.TimeoutExpired):
         findings.append({
+            'file': 'package.json',
+            'line': 0,
             'package': 'npm',
             'installed_version': 'N/A',
             'vulnerability_id': 'TOOL_MISSING',

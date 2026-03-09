@@ -1,18 +1,20 @@
 """Main CLI entry point for Shinobi."""
 
 import argparse
+import json
 import os
 import shutil
 import sys
+from pathlib import Path
 
 from shinobi import __version__
 from shinobi.scanner import run_scan, clone_repo
-from shinobi.reporter import print_report, save_json_report
+from shinobi.reporter import build_machine_report, print_report, save_json_report
 
 
 def main():
     parser = argparse.ArgumentParser(
-        prog='shinobi',
+        prog=os.path.basename(sys.argv[0]) or 'shinobi-scan',
         description='Shinobi — 10-second security scan for developers who ship fast',
     )
     parser.add_argument(
@@ -37,6 +39,16 @@ def main():
         help='Save JSON report to a specific file path',
     )
     parser.add_argument(
+        '--json',
+        action='store_true',
+        help='Output only machine-readable JSON with severity counts and findings',
+    )
+    parser.add_argument(
+        '--gate',
+        action='store_true',
+        help='Write the last machine-readable scan to ~/.gate/shinobi/last-scan.json for Gate integration',
+    )
+    parser.add_argument(
         '--no-color',
         action='store_true',
         help='Disable colored output',
@@ -55,7 +67,8 @@ def main():
 
     if args.repo:
         try:
-            print(f"  Cloning {args.repo}...")
+            if not args.json:
+                print(f"  Cloning {args.repo}...")
             tmp_dir = clone_repo(args.repo)
             target_dir = tmp_dir
         except RuntimeError as e:
@@ -77,19 +90,23 @@ def main():
             deep=args.deep,
             repo_url=args.repo,
         )
+        machine_report = build_machine_report(results)
 
-        # Determine output path
-        output_path = args.output or os.path.join(target_dir, 'shinobi-report.json')
-        results['output_path'] = output_path
+        default_output_path = os.path.join(target_dir, 'shinobi-report.json')
+        output_path = args.output or default_output_path
+        gate_output_path = str(Path.home() / '.gate' / 'shinobi' / 'last-scan.json')
+        results['output_path'] = output_path if not args.gate else gate_output_path
 
-        # Print terminal report
-        print_report(results, use_color=use_color)
-
-        # Save JSON report
-        try:
+        if args.output or not args.json:
             save_json_report(results, output_path)
-        except OSError as e:
-            print(f"  Warning: Could not save report to {output_path}: {e}", file=sys.stderr)
+        if args.gate:
+            save_json_report(results, gate_output_path)
+
+        if args.json:
+            sys.stdout.write(json.dumps(machine_report, indent=2))
+            sys.stdout.write('\n')
+        else:
+            print_report(results, use_color=use_color)
 
     finally:
         # Clean up cloned repo
